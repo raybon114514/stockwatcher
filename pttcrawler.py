@@ -44,42 +44,6 @@ class PTTStockCrawler:
             articles = self._fetch_from_ptt(stock_code, limit)  # 再 fallback
         return articles
 
-    # ------------------------------------------------------------------ #
-    #  Strategy 1：pttweb.cc（JSON API，最穩定）
-    # ------------------------------------------------------------------ #
-
-    def _fetch_from_pttweb(self, stock_code: str, limit: int) -> list[Article]:
-        url = f"{self.PTTWEB_API}?q={stock_code}"
-        try:
-            resp = self.session.get(url, timeout=10)
-            resp.raise_for_status()
-
-            soup = BeautifulSoup(resp.text, "html.parser")
-            items = soup.select("div.b-ent")  # pttweb 的文章卡片 class
-
-            results = []
-            for item in items[:limit]:
-                title_tag = item.select_one("div.title")
-                meta_tag  = item.select_one("div.mata, div.meta")  # 不同版本 class 不同
-                link_tag  = item.select_one("a")
-                push_tag  = item.select_one("div.nrec span")
-
-                if not title_tag or not link_tag:
-                    continue
-
-                results.append(Article(
-                    title      = title_tag.get_text(strip=True),
-                    url        = "https://www.pttweb.cc" + link_tag["href"],
-                    author     = meta_tag.get_text(strip=True) if meta_tag else "",
-                    date       = "",
-                    push_count = push_tag.get_text(strip=True) if push_tag else "0",
-                ))
-
-            return results
-
-        except Exception as e:
-            print(f"[pttweb] 發生錯誤：{e}")
-            return []
 
     # ------------------------------------------------------------------ #
     #  Strategy 2：直連 ptt.cc（HTML 解析，需預熱 cookie）
